@@ -1,0 +1,1720 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CVM 多可用区申请原型</title>
+  <style>
+    :root {
+      --primary: #1890ff;
+      --nav: #001529;
+      --nav-sub: #000c17;
+      --page: #f2f6f9;
+      --border: #f0f0f0;
+      --muted: #8c8c8c;
+      --success: #52c41a;
+      --banner-bg: #e6f4ff;
+      --banner-border: #91caff;
+      --side: 200px;
+      --top: 48px;
+      --content-width: 1688px;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-width: 1440px;
+      background: var(--page);
+      color: #262626;
+      font: 14px/1.5 "PingFang SC", "Helvetica Neue", Arial, "Microsoft YaHei", sans-serif;
+    }
+
+    .topbar {
+      position: fixed;
+      z-index: 20;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: var(--top);
+      display: flex;
+      align-items: center;
+      background: var(--nav);
+      color: rgba(255,255,255,.88);
+    }
+
+    .brand {
+      width: var(--side);
+      padding-left: 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: #fff;
+      font-size: 24px;
+      font-weight: 600;
+    }
+
+    .brand-mark {
+      width: 22px;
+      height: 16px;
+      border: 2px solid #1890ff;
+      border-top-left-radius: 14px;
+      border-top-right-radius: 14px;
+      border-bottom: 0;
+      position: relative;
+    }
+
+    .brand-mark::after {
+      content: "";
+      position: absolute;
+      right: -6px;
+      bottom: -1px;
+      width: 14px;
+      height: 12px;
+      border: 2px solid #1890ff;
+      border-top-left-radius: 12px;
+      border-top-right-radius: 12px;
+      border-bottom: 0;
+    }
+
+    .top-menu,
+    .top-actions {
+      display: flex;
+      align-items: center;
+      gap: 24px;
+      white-space: nowrap;
+    }
+
+    .top-actions {
+      margin-left: auto;
+      padding-right: 14px;
+      gap: 18px;
+      font-size: 13px;
+    }
+
+    .top-search {
+      margin-left: auto;
+      width: 320px;
+      font-size: 13px;
+      color: rgba(255,255,255,.82);
+    }
+
+    .avatar {
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      background: var(--primary);
+      color: #fff;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .sidebar {
+      position: fixed;
+      top: var(--top);
+      bottom: 0;
+      left: 0;
+      width: var(--side);
+      background: var(--nav);
+      color: rgba(255,255,255,.78);
+    }
+
+    .side-title {
+      height: 49px;
+      display: flex;
+      align-items: center;
+      padding: 0 24px;
+      color: #fff;
+      font-size: 16px;
+      font-weight: 500;
+      border-bottom: 1px solid rgba(255,255,255,.1);
+    }
+
+    .side-item {
+      height: 48px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 0 24px;
+    }
+
+    .side-item.group { color: #fff; font-weight: 500; }
+
+    .side-item.sub {
+      padding-left: 48px;
+      background: var(--nav-sub);
+    }
+
+    .side-item.active {
+      background: var(--primary);
+      color: #fff;
+    }
+
+    .side-collapse {
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      height: 44px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #002140;
+      color: #fff;
+      font-size: 22px;
+    }
+
+    .layout {
+      padding-top: var(--top);
+      padding-left: var(--side);
+    }
+
+    .page-shell {
+      padding: 16px;
+      min-height: calc(100vh - var(--top));
+    }
+
+    .tabs-bar {
+      width: var(--content-width);
+      margin: 0 auto 16px;
+      background: #fff;
+      padding: 12px 16px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .view-tab {
+      padding: 6px 14px;
+      border: 1px solid #d9d9d9;
+      color: #595959;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .view-tab.active {
+      background: var(--primary);
+      border-color: var(--primary);
+      color: #fff;
+    }
+
+    .page {
+      width: var(--content-width);
+      margin: 0 auto;
+      display: none;
+    }
+
+    .page.active { display: block; }
+
+    .banner {
+      height: 38px;
+      padding: 0 14px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      border: 1px solid var(--banner-border);
+      background: var(--banner-bg);
+    }
+
+    .step-card {
+      margin-top: 10px;
+      background: #fff;
+      padding: 10px 24px 14px;
+    }
+
+    .step-title {
+      font-size: 18px;
+      font-weight: 600;
+      margin-bottom: 10px;
+    }
+
+    .steps {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+    }
+
+    .step {
+      position: relative;
+      padding-left: 32px;
+      color: #8c8c8c;
+    }
+
+    .step::before {
+      content: attr(data-no);
+      position: absolute;
+      left: 0;
+      top: 0;
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      background: #f0f0f0;
+      color: #595959;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+    }
+
+    .step.active::before,
+    .step.done::before {
+      background: var(--primary);
+      color: #fff;
+    }
+
+    .step.done::before { content: "✓"; }
+
+    .section {
+      margin-top: 12px;
+      background: #fff;
+      padding: 24px;
+    }
+
+    .section-title {
+      margin: 0 0 18px;
+      padding-left: 10px;
+      border-left: 3px solid var(--primary);
+      font-size: 16px;
+      font-weight: 600;
+    }
+
+    .form-stack {
+      width: 100%;
+      max-width: 1360px;
+    }
+
+    .form-row {
+      display: flex;
+      align-items: flex-start;
+      margin-bottom: 18px;
+    }
+
+    .label {
+      width: 180px;
+      flex: 0 0 180px;
+      padding-top: 6px;
+      text-align: right;
+      color: #262626;
+    }
+
+    .row-main {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .required::before {
+      content: "* ";
+      color: #ff4d4f;
+    }
+
+    .input,
+    .select,
+    .pill-group {
+      min-height: 32px;
+      display: inline-flex;
+      align-items: center;
+      flex-wrap: nowrap;
+      gap: 0;
+    }
+
+    .input,
+    .select,
+    input.mini-input {
+      padding: 5px 12px;
+      border: 1px solid #d9d9d9;
+      background: #fff;
+      color: #262626;
+      font: inherit;
+    }
+
+    .input.muted,
+    .select.muted { color: #bfbfbf; }
+
+    .w-400 { width: 400px; }
+    .w-600 { width: 600px; }
+
+    .pill {
+      min-width: 96px;
+      height: 32px;
+      padding: 0 18px;
+      border: 1px solid #d9d9d9;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      background: #fff;
+      margin-left: -1px;
+      cursor: pointer;
+      user-select: none;
+      font-size: 14px;
+      line-height: 1;
+      white-space: nowrap;
+    }
+
+    .pill:first-child { margin-left: 0; }
+
+    .pill.active {
+      border-color: var(--primary);
+      background: var(--primary);
+      color: #fff;
+      position: relative;
+      z-index: 1;
+    }
+
+    .pill.disabled {
+      cursor: default;
+    }
+
+    .sub-block {
+      margin-top: 20px;
+      padding: 16px;
+      border: 1px solid #e8eef3;
+      background: #fafcff;
+    }
+
+    .tag {
+      display: inline-flex;
+      align-items: center;
+      height: 22px;
+      padding: 0 8px;
+      background: #f0f5ff;
+      color: #1677ff;
+      font-size: 12px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      table-layout: fixed;
+    }
+
+    th,
+    td {
+      border: 1px solid var(--border);
+      padding: 10px 12px;
+      text-align: left;
+      vertical-align: middle;
+      word-break: break-word;
+    }
+
+    th {
+      background: #fafafa;
+      font-weight: 500;
+    }
+
+    .table-compact td,
+    .table-compact th {
+      padding-top: 9px;
+      padding-bottom: 9px;
+    }
+
+    .spec-list {
+      width: 100%;
+      max-width: 1360px;
+      border: 1px solid var(--border);
+      background: #fff;
+    }
+
+    .spec-toolbar {
+      display: flex;
+      gap: 0;
+      margin-bottom: 10px;
+    }
+
+    .spec-toolbar .pill {
+      min-width: 152px;
+      cursor: default;
+    }
+
+    .image-mode-tabs {
+      display: inline-flex;
+      margin-bottom: 10px;
+      border-bottom: 1px solid #f0f0f0;
+      max-width: 1080px;
+    }
+
+    .image-mode-tab {
+      min-width: 96px;
+      height: 32px;
+      padding: 0 18px;
+      border: 1px solid #d9d9d9;
+      border-bottom: 0;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      margin-right: -1px;
+      background: #fff;
+      cursor: default;
+      position: relative;
+      top: 1px;
+      font-size: 14px;
+      line-height: 1;
+      white-space: nowrap;
+    }
+
+    .image-mode-tab.active {
+      color: var(--primary);
+      font-weight: 500;
+      background: #fff;
+    }
+
+    .image-cards {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+
+    .image-card {
+      width: 145px;
+      height: 86px;
+      border: 1px solid #d9d9d9;
+      background: #fafafa;
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      color: #8c8c8c;
+    }
+
+    .image-card.selected {
+      border-color: var(--primary);
+      background: #fff;
+      color: var(--primary);
+    }
+
+    .image-check {
+      position: absolute;
+      top: 8px;
+      left: 8px;
+      width: 18px;
+      height: 18px;
+      border: 1px solid #d9d9d9;
+      background: #f5f5f5;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      color: transparent;
+    }
+
+    .image-card.selected .image-check {
+      border-color: var(--primary);
+      background: var(--primary);
+      color: #fff;
+    }
+
+    .image-icon {
+      margin-bottom: 8px;
+      font-size: 16px;
+      color: inherit;
+    }
+
+    .image-name {
+      font-size: 13px;
+      color: inherit;
+    }
+
+    .slider-line {
+      width: 920px;
+      height: 2px;
+      background: #d9d9d9;
+      position: relative;
+      margin-top: 14px;
+      margin-bottom: 6px;
+    }
+
+    .slider-active {
+      position: absolute;
+      left: 0;
+      top: 0;
+      width: 220px;
+      height: 2px;
+      background: #91caff;
+    }
+
+    .slider-point {
+      position: absolute;
+      top: -5px;
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      border: 2px solid #69b1ff;
+      background: #fff;
+    }
+
+    .slider-labels {
+      display: flex;
+      gap: 34px;
+      color: #595959;
+      font-size: 12px;
+    }
+
+    .inline-note {
+      margin-top: 8px;
+      color: var(--muted);
+    }
+
+    .select.disabled {
+      background: #fafafa;
+      color: #bfbfbf;
+    }
+
+    .select.interactive {
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .select-wrap {
+      position: relative;
+      width: 600px;
+    }
+
+    .select::after {
+      content: "⌄";
+      margin-left: auto;
+      color: #bfbfbf;
+      font-size: 12px;
+      padding-left: 12px;
+    }
+
+    .select.disabled::after {
+      color: #d9d9d9;
+    }
+
+    .select-panel {
+      position: absolute;
+      top: 34px;
+      left: 0;
+      z-index: 12;
+      width: 100%;
+      border: 1px solid #d9d9d9;
+      background: #fff;
+      box-shadow: 0 6px 16px rgba(0, 0, 0, 0.08);
+    }
+
+    .select-option {
+      height: 32px;
+      padding: 0 14px;
+      display: flex;
+      align-items: center;
+      cursor: pointer;
+    }
+
+    .select-option.active,
+    .select-option:hover {
+      background: #f5f5f5;
+    }
+
+    .project-options {
+      max-height: 260px;
+      overflow-y: auto;
+    }
+
+    .summary-bar {
+      position: sticky;
+      bottom: 0;
+      margin-top: 12px;
+      background: rgba(255,255,255,.98);
+      border-top: 1px solid #e8e8e8;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 20px;
+    }
+
+    .summary-meta {
+      display: flex;
+      align-items: center;
+      gap: 18px;
+      flex-wrap: wrap;
+    }
+
+    .summary-meta span strong { font-weight: 600; }
+
+    .summary-qty {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .summary-qty input {
+      width: 88px;
+      height: 30px;
+      padding: 4px 8px;
+      border: 1px solid #d9d9d9;
+      font: inherit;
+    }
+
+    .summary-qty.readonly input {
+      background: #fafafa;
+      color: #8c8c8c;
+    }
+
+    .btns {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .btn {
+      min-width: 88px;
+      height: 32px;
+      padding: 0 16px;
+      border: 1px solid #d9d9d9;
+      background: #fff;
+      cursor: pointer;
+      font: inherit;
+    }
+
+    .btn.primary {
+      border-color: var(--primary);
+      background: var(--primary);
+      color: #fff;
+    }
+
+    .btn.link {
+      border: 0;
+      color: #1677ff;
+      background: transparent;
+      min-width: auto;
+      padding: 0;
+    }
+
+    .desc-list {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    .desc-list td {
+      border: 1px solid var(--border);
+      padding: 10px 14px;
+    }
+
+    .desc-list td.key {
+      width: 140px;
+      background: #fafafa;
+      color: #595959;
+    }
+
+    .status-pass {
+      color: var(--success);
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--success);
+      display: inline-block;
+    }
+
+    .page-head {
+      margin-bottom: 12px;
+      background: #fff;
+      padding: 16px 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .page-head .title {
+      font-size: 16px;
+      font-weight: 600;
+    }
+
+    .small-note {
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .link {
+      color: #1677ff;
+      text-decoration: none;
+      cursor: pointer;
+    }
+
+    .hidden { display: none !important; }
+
+    .float-tool {
+      position: fixed;
+      right: 16px;
+      bottom: 100px;
+      width: 42px;
+      height: 42px;
+      border-radius: 50%;
+      background: #1677ff;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 6px 18px rgba(22,119,255,.25);
+      font-size: 20px;
+    }
+
+    input.mini-input {
+      width: 120px;
+      height: 32px;
+    }
+  </style>
+</head>
+<body>
+  <div class="topbar">
+    <div class="brand"><span class="brand-mark"></span>Panther</div>
+    <div class="top-menu">
+      <span>控制台</span>
+      <span>全部产品</span>
+      <span>Flux DevOps</span>
+      <span>Redis</span>
+      <span>负载均衡 SCLB</span>
+      <span>CMDB</span>
+      <span>CVM</span>
+    </div>
+    <div class="top-search">支持输入关键词搜索产品和文档</div>
+    <div class="top-actions">
+      <span>业务账号</span>
+      <span>业务账单</span>
+      <span>咨询</span>
+      <span>工单</span>
+      <span>值班</span>
+      <span>学习中心</span>
+      <span>通知</span>
+      <span class="avatar">王</span>
+      <span>王铭浩</span>
+    </div>
+  </div>
+
+  <aside class="sidebar">
+    <div class="side-title">云服务器 CVM</div>
+    <div class="side-item">概览</div>
+    <div class="side-item group">项目管理</div>
+    <div class="side-item group">云服务器实例</div>
+    <div class="side-item group">镜像</div>
+    <div class="side-item group">云硬盘</div>
+    <div class="side-item group">快照</div>
+    <div class="side-item group">申请管理</div>
+    <div class="side-item sub active">实例申请</div>
+    <div class="side-item sub">云硬盘申请</div>
+    <div class="side-item group">回收站</div>
+    <div class="side-item group">全局操作日志</div>
+    <div class="side-collapse">‹</div>
+  </aside>
+
+  <div class="layout">
+    <div class="page-shell">
+      <div class="tabs-bar">
+        <div class="view-tab active" data-target="create">创建页原型</div>
+        <div class="view-tab" data-target="confirm">申请确认页原型</div>
+        <div class="view-tab" data-target="detail">申请单详情页原型</div>
+      </div>
+
+      <section class="page active" id="create">
+        <div class="banner">i 实现 CVM 高可用部署，请参见 <a class="link">CVM 高可用架构部署方案</a>。</div>
+        <div class="step-card">
+          <div class="step-title">新建实例</div>
+          <div class="steps">
+            <div class="step active" data-no="1">
+              <div>实例配置</div>
+              <div class="small-note">配置实例资源规格、镜像等</div>
+            </div>
+            <div class="step" data-no="2">
+              <div>申请信息</div>
+              <div class="small-note">填写用途和申请理由</div>
+            </div>
+            <div class="step" data-no="3">
+              <div>确认配置</div>
+              <div class="small-note">确认配置，提交管理员审核</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="section">
+          <h3 class="section-title">基础配置</h3>
+          <div class="form-stack">
+            <div class="form-row">
+              <div class="label required">实例类型：</div>
+              <div class="row-main">
+                <div class="pill-group">
+                  <div class="pill active disabled">搜狐云</div>
+                  <div class="pill disabled">腾讯云</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="form-row">
+              <div class="label">通过快照创建：</div>
+              <div class="row-main">
+                <div style="width:46px;height:24px;background:#d9d9d9;border-radius:12px;position:relative;">
+                  <div style="width:20px;height:20px;border-radius:50%;background:#fff;position:absolute;left:2px;top:2px;"></div>
+                </div>
+              </div>
+            </div>
+
+            <div class="form-row">
+              <div class="label required">机房：</div>
+              <div class="row-main">
+                <div class="pill-group">
+                  <div class="pill active disabled">金山云</div>
+                  <div class="pill disabled">亦庄</div>
+                  <div class="pill disabled">媒体机房</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="form-row">
+              <div class="label required">创建方式：</div>
+              <div class="row-main">
+                <div class="pill-group">
+                  <div class="pill active" data-mode-btn="single">单可用区创建</div>
+                  <div class="pill" data-mode-btn="multi">多可用区创建</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="form-row">
+              <div class="label required">可用区：</div>
+              <div class="row-main">
+                <div class="pill-group hidden" id="single-zone-wrap">
+                  <div class="pill" data-single-zone-option="A区">A区</div>
+                  <div class="pill" data-single-zone-option="B区">B区</div>
+                </div>
+                <div class="small-note hidden" id="single-zone-note" style="margin-top:10px;">只针对系统盘做可用区划分，数据盘不做划分。</div>
+                <div class="sub-block" id="multi-az-block" style="margin-top:0;max-width:760px;padding:12px 16px;background:#fff;border-color:#f0f0f0;">
+                  <table class="table-compact">
+                    <thead>
+                      <tr>
+                        <th style="width:220px;">可用区</th>
+                        <th style="width:220px;">实例数量</th>
+                      </tr>
+                    </thead>
+                    <tbody id="az-config-body"></tbody>
+                  </table>
+                  <div style="margin-top:10px;">
+                    <a class="link" id="add-az-link">+ 添加可用区</a>
+                  </div>
+                  <div class="small-note" style="margin-top:10px;">只针对系统盘做可用区划分，数据盘不做划分。</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="form-row" style="margin-bottom:0;">
+              <div class="label required">所属项目：</div>
+              <div class="row-main">
+                <div class="select-wrap">
+                  <div class="select w-600 muted interactive" id="project-select">请选择</div>
+                  <div class="select-panel hidden" id="project-panel">
+                    <div class="project-options" id="project-options">
+                      <div class="select-option active" data-project-option="SCLB-媒体大厦-master">SCLB-媒体大厦-master</div>
+                      <div class="select-option" data-project-option="erp-portal-mgr">erp-portal-mgr</div>
+                      <div class="select-option" data-project-option="peak-cvm-admin">peak-cvm-admin</div>
+                      <div class="select-option" data-project-option="erp-portal-test">erp-portal-test</div>
+                      <div class="select-option" data-project-option="peak-cvm-prod">peak-cvm-prod</div>
+                      <div class="select-option" data-project-option="erp-portal-prod">erp-portal-prod</div>
+                      <div class="select-option" data-project-option="CMP-多云管理">CMP-多云管理</div>
+                      <div class="select-option" data-project-option="测试环境CVM">测试环境CVM</div>
+                    </div>
+                  </div>
+                </div>
+                <div class="inline-note">项目是 CVM 实例、云硬盘等资源的集合，可以通过项目对资源分组以进行权限控制和统一管理。</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="section">
+          <h3 class="section-title">实例配置</h3>
+          <div class="form-stack" style="max-width:none;">
+            <div class="form-row">
+              <div class="label required">镜像：</div>
+              <div class="row-main">
+                <div class="image-mode-tabs">
+                  <div class="image-mode-tab active" data-image-mode="public">公共镜像</div>
+                  <div class="image-mode-tab" data-image-mode="custom">自定义镜像</div>
+                </div>
+                <div class="image-cards">
+                  <div class="image-card selected" data-image-card="redhat">
+                    <span class="image-check">✓</span>
+                    <div class="image-icon">🎩</div>
+                    <div class="image-name">Red Hat</div>
+                  </div>
+                  <div class="image-card" data-image-card="centos">
+                    <span class="image-check">✓</span>
+                    <div class="image-icon">✳</div>
+                    <div class="image-name">CentOS</div>
+                  </div>
+                  <div class="image-card" data-image-card="stream">
+                    <span class="image-check">✓</span>
+                    <div class="image-icon">✳</div>
+                    <div class="image-name">CentOS Stream</div>
+                  </div>
+                  <div class="image-card" data-image-card="windows">
+                    <span class="image-check">✓</span>
+                    <div class="image-icon">🪟</div>
+                    <div class="image-name">Windows</div>
+                  </div>
+                </div>
+                <div class="select-wrap">
+                  <div class="select w-600 muted interactive" id="image-version-select">请选择版本</div>
+                  <div class="select-panel hidden" id="image-version-panel">
+                    <div class="select-option active" data-image-version="Red_Hat_Enterprise_Linux_9.6_x64">Red_Hat_Enterprise_Linux_9.6_x64</div>
+                    <div class="select-option" data-image-version="Red_Hat_Enterprise_Linux_8.7_x64">Red_Hat_Enterprise_Linux_8.7_x64</div>
+                    <div class="select-option" data-image-version="Red_Hat_Enterprise_Linux_8.7_x64_sclb">Red_Hat_Enterprise_Linux_8.7_x64_sclb</div>
+                    <div class="select-option" data-image-version="Red_Hat_Enterprise_Linux_8.7_x64_DomeOS">Red_Hat_Enterprise_Linux_8.7_x64_DomeOS</div>
+                    <div class="select-option" data-image-version="Red_Hat_Enterprise_Linux_7.9_x64">Red_Hat_Enterprise_Linux_7.9_x64</div>
+                    <div class="select-option" data-image-version="Red_Hat_Enterprise_Linux_7.9_x64_DomeOS">Red_Hat_Enterprise_Linux_7.9_x64_DomeOS</div>
+                  </div>
+                </div>
+                <div class="inline-note" id="image-version-note">如您需要将实例加入 DomeOS 集群，请选择 Red Hat 中与 DomeOS 适配的镜像。</div>
+              </div>
+            </div>
+
+            <div class="form-row">
+              <div class="label required">实例：</div>
+              <div class="row-main">
+                <table class="table-compact spec-list">
+                  <thead>
+                    <tr>
+                      <th style="width:180px;">型号</th>
+                      <th style="width:180px;">规格</th>
+                      <th style="width:120px;">vCPU</th>
+                      <th style="width:120px;">内存</th>
+                      <th>处理器型号</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td>通用型 G6</td>
+                      <td>g6.large8</td>
+                      <td>4核</td>
+                      <td>8GB</td>
+                      <td>4 x Intel(R) Xeon(R) Gold 5218R CPU @ 2.10GHz</td>
+                    </tr>
+                    <tr>
+                      <td>通用型 G6</td>
+                      <td>g6.2xlarge16</td>
+                      <td>8核</td>
+                      <td>16GB</td>
+                      <td>8 x Intel(R) Xeon(R) Gold 5218R CPU @ 2.10GHz</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <div class="form-row" style="margin-bottom:0;">
+              <div class="label required">存储：</div>
+              <div class="row-main">
+                <table class="table-compact spec-list">
+                  <thead>
+                    <tr>
+                      <th style="width:140px;">用途</th>
+                      <th style="width:280px;">类型</th>
+                      <th style="width:150px;">容量</th>
+                      <th style="width:120px;">数量</th>
+                      <th style="width:120px;">IOPS</th>
+                      <th style="width:140px;">吞吐量</th>
+                      <th style="width:120px;">操作</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td>系统盘</td>
+                      <td>增强型SSD型云硬盘</td>
+                      <td>50 GiB</td>
+                      <td>1</td>
+                      <td>1500</td>
+                      <td>300MB/s</td>
+                      <td>--</td>
+                    </tr>
+                    <tr>
+                      <td>数据盘</td>
+                      <td>HDD型云硬盘</td>
+                      <td>70 GiB</td>
+                      <td>1</td>
+                      <td>--</td>
+                      <td>--</td>
+                      <td><a class="link">删除</a></td>
+                    </tr>
+                  </tbody>
+                </table>
+                <div style="margin-top:10px;">
+                  <a class="link">+ 添加数据盘</a>
+                  <span class="small-note" style="margin-left:14px;">您还可以添加19块数据盘</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="section">
+          <h3 class="section-title">网络与带宽</h3>
+          <div class="form-stack">
+            <div class="form-row">
+              <div class="label">网络：</div>
+              <div class="row-main">
+                <div class="pill-group">
+                  <div class="pill active disabled">系统分配</div>
+                </div>
+              </div>
+            </div>
+            <div class="form-row" style="margin-bottom:0;">
+              <div class="label">带宽：</div>
+              <div class="row-main">
+                <div class="slider-line">
+                  <div class="slider-active"></div>
+                  <div class="slider-point" style="left:0;"></div>
+                  <div class="slider-point" style="left:44px;"></div>
+                  <div class="slider-point" style="left:92px;"></div>
+                  <div class="slider-point" style="left:188px;"></div>
+                </div>
+                <div class="slider-labels">
+                  <span>100</span>
+                  <span>200</span>
+                  <span>300Mbps</span>
+                  <span>500Mbps</span>
+                  <span style="margin-left:130px;">1Gbps</span>
+                  <span style="margin-left:140px;">2Gbps</span>
+                </div>
+                <div class="input" style="width:140px;margin-top:10px;">500 Mbps</div>
+                <div class="inline-note">此带宽为内网带宽，可根据业务场景设置带宽值。</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="section">
+          <h3 class="section-title">其它设置</h3>
+          <div class="form-stack">
+            <div class="form-row">
+              <div class="label required">实例名称：</div>
+              <div class="row-main"><div class="input w-400 muted">请输入</div></div>
+            </div>
+            <div class="form-row">
+              <div class="label required">登录方式：</div>
+              <div class="row-main">
+                <div class="pill-group">
+                  <div class="pill active disabled">自动生成密码</div>
+                  <div class="pill disabled">密钥对</div>
+                </div>
+                <div class="inline-note"><span class="tag" style="background:#fff7e6;color:#d48806;">注意</span> 创建后，自动生成的密码将在实例详情页中展示，支持重置密码。</div>
+              </div>
+            </div>
+            <div class="form-row" style="margin-bottom:0;">
+              <div class="label">置放群组：</div>
+              <div class="row-main">
+                <div class="select w-600 muted">请选择</div>
+                <div class="inline-note">请先完成基础配置信息的填写，然后再选择置放群组</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="summary-bar">
+          <div class="summary-meta">
+            <span>已选：<strong>搜狐云 - g6.large8 - 4核 8GB</strong></span>
+            <span>创建方式：<strong id="summary-mode">单可用区创建</strong></span>
+            <span class="summary-qty" id="summary-qty-wrap">
+              数量：
+              <input id="summary-qty-input" type="number" min="1" value="1" />
+              <span class="small-note" id="summary-qty-tip">可直接编辑</span>
+            </span>
+            <span>分布：<strong id="summary-distribution">B区 1台</strong></span>
+          </div>
+          <div class="btns">
+            <button class="btn primary" id="next-step-btn">下一步</button>
+            <button class="btn">取消</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="page" id="confirm">
+        <div class="banner">i 实现 CVM 高可用部署，请参见 <a class="link">CVM 高可用架构部署方案</a>。</div>
+        <div class="step-card">
+          <div class="step-title">新建实例</div>
+          <div class="steps">
+            <div class="step done" data-no="1">
+              <div>实例配置</div>
+              <div class="small-note">配置实例资源规格、镜像等</div>
+            </div>
+            <div class="step done" data-no="2">
+              <div>申请信息</div>
+              <div class="small-note">填写用途和申请理由</div>
+            </div>
+            <div class="step active" data-no="3">
+              <div>确认配置</div>
+              <div class="small-note">确认配置，提交管理员审核</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="section">
+          <h3 class="section-title">申请信息</h3>
+          <table class="table-compact">
+            <tbody>
+              <tr>
+                <td style="width:140px;background:#fafafa;">申请人</td>
+                <td style="width:140px;">王铭浩</td>
+                <td style="width:160px;background:#fafafa;">申请人邮箱</td>
+                <td>minghaowang220757@sohu-inc.com</td>
+                <td style="width:110px;background:#fafafa;">部门</td>
+                <td>集团总部-大数据中心-数据服务部</td>
+                <td style="width:120px;background:#fafafa;">申请理由</td>
+                <td style="width:70px;">1</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="section">
+          <div style="display:flex;justify-content:space-between;align-items:center;">
+            <h3 class="section-title" style="margin-bottom:0;">基础配置</h3>
+          </div>
+
+          <div class="sub-block" style="margin-top:18px;">
+            <div style="margin-bottom:12px;"><strong>实例公共配置</strong></div>
+            <table class="desc-list">
+              <tr>
+                <td class="key">总实例数</td>
+                <td id="confirm-total">2</td>
+                <td class="key">实例类型</td>
+                <td>搜狐云</td>
+              </tr>
+              <tr>
+                <td class="key">所属项目</td>
+                <td>sohu-bd-sclb-pro</td>
+                <td class="key">镜像</td>
+                <td>Red_Hat_Enterprise_Linux_8.7_x64_DomeOS</td>
+              </tr>
+              <tr>
+                <td class="key">实例</td>
+                <td>g6.large8　4核　8GB</td>
+                <td class="key">系统盘</td>
+                <td>1 * 50GiB | 增强型 SSD 型云硬盘</td>
+              </tr>
+              <tr>
+                <td class="key">数据盘</td>
+                <td>1 * 70GiB | HDD 型云硬盘</td>
+                <td class="key">网络 / 带宽</td>
+                <td>系统分配 / 500Mbps</td>
+              </tr>
+              <tr>
+                <td class="key">实例名称</td>
+                <td>sclb-4layer-pro-jsy</td>
+                <td class="key">登录方式</td>
+                <td>自动生成密码</td>
+              </tr>
+              <tr>
+                <td class="key">放置群组</td>
+                <td>---</td>
+                <td class="key">创建方式</td>
+                <td id="confirm-mode">单可用区创建</td>
+              </tr>
+            </table>
+          </div>
+
+          <div class="sub-block">
+            <div style="margin-bottom:12px;"><strong>可用区分布</strong></div>
+            <table class="table-compact">
+              <thead>
+                <tr>
+                  <th style="width:200px;">机房</th>
+                  <th style="width:200px;">可用区</th>
+                  <th style="width:200px;">实例数量</th>
+                </tr>
+              </thead>
+              <tbody id="confirm-az-body"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="summary-bar">
+          <div class="btns">
+            <button class="btn" id="confirm-prev-btn">上一步</button>
+            <button class="btn">取消</button>
+            <button class="btn primary" id="submit-application-btn">提交申请</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="page" id="detail">
+        <div class="page-head">
+          <div class="title">实例申请详情</div>
+          <button class="btn" id="detail-back-btn">返回</button>
+        </div>
+
+        <div class="section" style="margin-top:0;">
+          <h3 class="section-title">申请单信息</h3>
+          <table class="desc-list">
+            <tr>
+              <td class="key">申请人</td>
+              <td>徐鹏志</td>
+              <td class="key">申请人邮箱</td>
+              <td>pengzhixu@sohu-inc.com</td>
+              <td class="key">部门</td>
+              <td>集团总部-大数据中心-基础架构部</td>
+            </tr>
+            <tr>
+              <td class="key">申请理由</td>
+              <td colspan="5">用于搭建 sclb 生产环境金山云集群，要求实例分布在不同可用区以提升高可用性。</td>
+            </tr>
+          </table>
+        </div>
+
+        <div class="section">
+          <h3 class="section-title">实例信息</h3>
+          <div class="sub-block" style="margin-top:0;">
+            <div style="margin-bottom:12px;"><strong>申请摘要</strong></div>
+            <table class="desc-list">
+              <tr>
+                <td class="key">创建方式</td>
+                <td id="detail-mode">单可用区创建</td>
+                <td class="key">总实例数</td>
+                <td id="detail-total">1</td>
+              </tr>
+              <tr>
+                <td class="key">分布摘要</td>
+                <td colspan="3" id="detail-distribution">金山云 B区 1 台</td>
+              </tr>
+            </table>
+          </div>
+
+          <div class="sub-block">
+            <div style="margin-bottom:12px;"><strong>实例公共配置</strong></div>
+            <table class="desc-list">
+              <tr>
+                <td class="key">实例类型</td>
+                <td>搜狐云</td>
+                <td class="key">所属项目</td>
+                <td>sohu-bd-sclb-pro</td>
+              </tr>
+              <tr>
+                <td class="key">实例</td>
+                <td>g6.large8　4核　8GB</td>
+                <td class="key">镜像</td>
+                <td>Red_Hat_Enterprise_Linux_8.7_x64_DomeOS</td>
+              </tr>
+              <tr>
+                <td class="key">系统盘</td>
+                <td>1 * 50GiB | 增强型 SSD 型云硬盘</td>
+                <td class="key">数据盘</td>
+                <td>1 * 70GiB | HDD 型云硬盘</td>
+              </tr>
+              <tr>
+                <td class="key">网络</td>
+                <td>系统分配</td>
+                <td class="key">带宽</td>
+                <td>500Mbps</td>
+              </tr>
+              <tr>
+                <td class="key">实例名称</td>
+                <td>sclb-4layer-pro-jsy</td>
+                <td class="key">登录方式</td>
+                <td>自定义密码</td>
+              </tr>
+              <tr>
+                <td class="key">实例描述</td>
+                <td>sclb 生产环境金山云集群 master 节点</td>
+                <td class="key">放置群组</td>
+                <td>---</td>
+              </tr>
+            </table>
+          </div>
+
+          <div class="sub-block">
+            <div style="margin-bottom:12px;"><strong>可用区分布明细</strong></div>
+            <table class="table-compact">
+              <thead>
+                <tr>
+                  <th style="width:180px;">机房</th>
+                  <th style="width:180px;">可用区</th>
+                  <th style="width:180px;">申请数量</th>
+                </tr>
+              </thead>
+              <tbody id="detail-az-body"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="section">
+          <h3 class="section-title">审核信息</h3>
+          <table class="desc-list">
+            <tr>
+              <td class="key">审核结果</td>
+              <td colspan="3"><span class="status-pass"><span class="dot"></span>已通过</span></td>
+            </tr>
+            <tr>
+              <td class="key">审核意见</td>
+              <td colspan="3">流程已通过</td>
+            </tr>
+          </table>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <div class="float-tool">⌘</div>
+
+  <script>
+    const tabs = document.querySelectorAll('.view-tab');
+    const pages = document.querySelectorAll('.page');
+    const modeButtons = document.querySelectorAll('[data-mode-btn]');
+    const addAzLink = document.getElementById('add-az-link');
+    const azConfigBody = document.getElementById('az-config-body');
+    const nextStepBtn = document.getElementById('next-step-btn');
+    const backToCreateBtn = document.getElementById('back-to-create-btn');
+    const confirmPrevBtn = document.getElementById('confirm-prev-btn');
+    const submitApplicationBtn = document.getElementById('submit-application-btn');
+    const detailBackBtn = document.getElementById('detail-back-btn');
+    const imageModeTabs = document.querySelectorAll('[data-image-mode]');
+    const imageCards = document.querySelectorAll('[data-image-card]');
+    const imageVersionSelect = document.getElementById('image-version-select');
+    const imageVersionPanel = document.getElementById('image-version-panel');
+    const imageVersionNote = document.getElementById('image-version-note');
+    const projectSelect = document.getElementById('project-select');
+    const projectPanel = document.getElementById('project-panel');
+    const projectOptions = document.getElementById('project-options');
+    const singleZoneWrap = document.getElementById('single-zone-wrap');
+    const singleZoneNote = document.getElementById('single-zone-note');
+    const multiAzBlock = document.getElementById('multi-az-block');
+
+    const summaryMode = document.getElementById('summary-mode');
+    const summaryQtyWrap = document.getElementById('summary-qty-wrap');
+    const summaryQtyInput = document.getElementById('summary-qty-input');
+    const summaryQtyTip = document.getElementById('summary-qty-tip');
+    const summaryDistribution = document.getElementById('summary-distribution');
+    const confirmTotal = document.getElementById('confirm-total');
+    const confirmMode = document.getElementById('confirm-mode');
+    const confirmAzBody = document.getElementById('confirm-az-body');
+    const confirmSummaryMode = document.getElementById('confirm-summary-mode');
+    const confirmSummaryTotal = document.getElementById('confirm-summary-total');
+    const confirmSummaryDistribution = document.getElementById('confirm-summary-distribution');
+    const detailMode = document.getElementById('detail-mode');
+    const detailTotal = document.getElementById('detail-total');
+    const detailDistribution = document.getElementById('detail-distribution');
+    const detailAzBody = document.getElementById('detail-az-body');
+
+    const state = {
+      mode: 'single',
+      imageMode: 'public',
+      selectedImage: 'redhat',
+      imageVersionSelected: false,
+      selectedImageVersion: '',
+      selectedProject: '',
+      zones: [
+        { zone: 'B区', quantity: 1 }
+      ]
+    };
+
+    function showPage(target) {
+      tabs.forEach((tab) => tab.classList.toggle('active', tab.dataset.target === target));
+      pages.forEach((page) => page.classList.toggle('active', page.id === target));
+    }
+
+    function availableZones() {
+      return ['A区', 'B区'];
+    }
+
+    function usedZones() {
+      return state.zones.map((item) => item.zone);
+    }
+
+    function nextUnusedZone() {
+      return availableZones().find((zone) => !usedZones().includes(zone));
+    }
+
+    function zoneOptionMarkup(selectedZone) {
+      return availableZones().map((zone) => `
+        <option value="${zone}" ${zone === selectedZone ? 'selected' : ''}>${zone}</option>
+      `).join('');
+    }
+
+    function distributionText(withRoom) {
+      const prefix = withRoom ? '金山云 ' : '';
+      return state.zones.map((item) => `${prefix}${item.zone} ${item.quantity}台`).join('，');
+    }
+
+    function totalQuantity() {
+      return state.zones.reduce((sum, item) => sum + item.quantity, 0);
+    }
+
+    function syncModeButtons() {
+      modeButtons.forEach((button) => {
+        button.classList.toggle('active', button.dataset.modeBtn === state.mode);
+      });
+      const multi = state.mode === 'multi';
+      addAzLink.classList.toggle('hidden', !multi || state.zones.length >= availableZones().length);
+      summaryQtyWrap.classList.toggle('readonly', multi);
+      summaryQtyInput.readOnly = multi;
+      summaryQtyTip.textContent = multi ? '由可用区分布自动汇总' : '可直接编辑';
+    }
+
+    function syncImageControls() {
+      imageModeTabs.forEach((tab) => {
+        tab.classList.toggle('active', tab.dataset.imageMode === state.imageMode);
+      });
+      imageCards.forEach((card) => {
+        const active = state.imageMode === 'public' && card.dataset.imageCard === state.selectedImage;
+        card.classList.toggle('selected', active);
+        card.style.opacity = state.imageMode === 'public' ? '1' : '0.55';
+      });
+
+      if (state.imageMode === 'custom') {
+        imageVersionSelect.className = 'select w-600 disabled';
+        imageVersionSelect.textContent = '请先选择镜像分类';
+        imageVersionNote.textContent = '切换为公共镜像后，可选择镜像分类与版本。';
+        imageVersionPanel.classList.add('hidden');
+        return;
+      }
+
+      const noteMap = {
+        redhat: '如您需要将实例加入 DomeOS 集群，请选择 Red Hat 中与 DomeOS 适配的镜像。',
+        centos: 'CentOS 镜像适用于标准 Linux 场景。',
+        stream: 'CentOS Stream 镜像适用于持续更新场景。',
+        windows: 'Windows 镜像适用于 Windows 应用部署场景。'
+      };
+
+      imageVersionSelect.className = state.imageVersionSelected ? 'select w-600 interactive' : 'select w-600 muted interactive';
+      imageVersionSelect.textContent = state.imageVersionSelected ? state.selectedImageVersion : '请选择版本';
+      imageVersionNote.textContent = noteMap[state.selectedImage];
+    }
+
+    function syncProjectControls() {
+      projectSelect.className = state.selectedProject ? 'select w-600 interactive' : 'select w-600 muted interactive';
+      projectSelect.textContent = state.selectedProject || '请选择';
+    }
+
+    function syncZoneControls() {
+      const single = state.mode === 'single';
+      singleZoneWrap.classList.toggle('hidden', !single);
+      singleZoneNote.classList.toggle('hidden', !single);
+      multiAzBlock.classList.toggle('hidden', single);
+      if (single) {
+        const selectedZone = state.zones[0] ? state.zones[0].zone : 'A区';
+        singleZoneWrap.querySelectorAll('[data-single-zone-option]').forEach((option) => {
+          option.classList.toggle('active', option.dataset.singleZoneOption === selectedZone);
+        });
+      }
+    }
+
+    function renderConfigRows() {
+      azConfigBody.innerHTML = '';
+      state.zones.forEach((item, index) => {
+        const row = document.createElement('tr');
+        const canDelete = state.mode === 'multi' && state.zones.length > 2;
+        const isLocked = state.mode === 'multi' && state.zones.length <= 2;
+        row.innerHTML = `
+          <td>${state.mode === 'single' ? `<select class="mini-input" data-zone-index="${index}">${zoneOptionMarkup(item.zone)}</select>` : item.zone}</td>
+          <td><input class="mini-input" type="number" min="1" value="${item.quantity}" data-qty-index="${index}" /></td>
+        `;
+        azConfigBody.appendChild(row);
+      });
+    }
+
+    function renderConfirmRows() {
+      confirmAzBody.innerHTML = state.zones.map((item) => `
+        <tr>
+          <td>金山云</td>
+          <td>${item.zone}</td>
+          <td>${item.quantity}</td>
+        </tr>
+      `).join('');
+    }
+
+    function renderDetailRows() {
+      detailAzBody.innerHTML = state.zones.map((item, index) => `
+        <tr>
+          <td>金山云</td>
+          <td>${item.zone}</td>
+          <td>${item.quantity}</td>
+        </tr>
+      `).join('');
+    }
+
+    function syncSummaries() {
+      const total = totalQuantity();
+      const modeText = state.mode === 'multi' ? '多可用区创建' : '单可用区创建';
+      const dist = distributionText(false);
+      const detailDist = distributionText(true);
+
+      summaryMode.textContent = modeText;
+      summaryQtyInput.value = total;
+      summaryDistribution.textContent = dist;
+
+      confirmTotal.textContent = total;
+      confirmMode.textContent = modeText;
+      confirmSummaryMode.textContent = modeText;
+      confirmSummaryTotal.textContent = total;
+      confirmSummaryDistribution.textContent = dist;
+
+      detailMode.textContent = modeText;
+      detailTotal.textContent = total;
+      detailDistribution.textContent = detailDist;
+    }
+
+    function renderAll() {
+      syncModeButtons();
+      syncImageControls();
+      syncProjectControls();
+      syncZoneControls();
+      renderConfigRows();
+      renderConfirmRows();
+      renderDetailRows();
+      syncSummaries();
+    }
+
+    modeButtons.forEach((button) => {
+      button.addEventListener('click', () => {
+        const mode = button.dataset.modeBtn;
+        if (mode === state.mode) return;
+        const preservedZone = state.zones[0] ? state.zones[0].zone : 'B区';
+        state.mode = mode;
+        if (mode === 'single') {
+          state.zones = [state.zones[0] || { zone: 'B区', quantity: 1 }];
+          state.zones[0].zone = 'B区';
+        } else if (state.zones.length < 2) {
+          state.zones = [
+            { zone: 'A区', quantity: 1 },
+            { zone: 'B区', quantity: state.zones[0] ? state.zones[0].quantity : 1 }
+          ];
+        }
+        renderAll();
+      });
+    });
+
+    imageModeTabs.forEach((tab) => {
+      tab.addEventListener('click', () => {
+        state.imageMode = tab.dataset.imageMode;
+        state.imageVersionSelected = false;
+        state.selectedImageVersion = '';
+        renderAll();
+      });
+    });
+
+    imageCards.forEach((card) => {
+      card.addEventListener('click', () => {
+        if (state.imageMode !== 'public') return;
+        state.selectedImage = card.dataset.imageCard;
+        state.imageVersionSelected = false;
+        state.selectedImageVersion = '';
+        imageVersionPanel.classList.add('hidden');
+        syncImageControls();
+      });
+    });
+
+    imageVersionSelect.addEventListener('click', () => {
+      if (state.imageMode !== 'public') return;
+      imageVersionPanel.classList.toggle('hidden');
+    });
+
+    imageVersionPanel.addEventListener('click', (event) => {
+      const option = event.target.closest('[data-image-version]');
+      if (!option) return;
+      state.selectedImageVersion = option.dataset.imageVersion;
+      state.imageVersionSelected = true;
+      imageVersionPanel.querySelectorAll('.select-option').forEach((item) => item.classList.remove('active'));
+      option.classList.add('active');
+      imageVersionPanel.classList.add('hidden');
+      syncImageControls();
+    });
+
+    projectSelect.addEventListener('click', () => {
+      projectPanel.classList.toggle('hidden');
+    });
+
+    projectOptions.addEventListener('click', (event) => {
+      const option = event.target.closest('[data-project-option]');
+      if (!option) return;
+      state.selectedProject = option.dataset.projectOption;
+      projectOptions.querySelectorAll('.select-option').forEach((item) => item.classList.remove('active'));
+      option.classList.add('active');
+      projectPanel.classList.add('hidden');
+      syncProjectControls();
+    });
+
+    singleZoneWrap.addEventListener('click', (event) => {
+      const option = event.target.closest('[data-single-zone-option]');
+      if (!option) return;
+      state.zones[0].zone = option.dataset.singleZoneOption;
+      syncZoneControls();
+      syncSummaries();
+      renderConfirmRows();
+      renderDetailRows();
+    });
+
+    addAzLink.addEventListener('click', () => {
+      const nextZone = nextUnusedZone();
+      if (!nextZone) return;
+      state.zones.push({ zone: nextZone, quantity: 1 });
+      renderAll();
+    });
+
+    azConfigBody.addEventListener('input', (event) => {
+      const input = event.target;
+      if (!input.matches('[data-qty-index]')) return;
+      const index = Number(input.dataset.qtyIndex);
+      const value = Math.max(1, Number(input.value) || 1);
+      state.zones[index].quantity = value;
+      input.value = value;
+      syncSummaries();
+      renderConfirmRows();
+      renderDetailRows();
+    });
+
+    azConfigBody.addEventListener('change', (event) => {
+      const select = event.target;
+      if (!select.matches('[data-zone-index]')) return;
+      const index = Number(select.dataset.zoneIndex);
+      state.zones[index].zone = select.value;
+      syncSummaries();
+      renderConfirmRows();
+      renderDetailRows();
+    });
+
+    azConfigBody.addEventListener('click', (event) => {
+      const target = event.target;
+      if (!target.matches('[data-delete-index]')) return;
+      const index = Number(target.dataset.deleteIndex);
+      if (state.mode === 'multi' && state.zones.length <= 2) return;
+      state.zones.splice(index, 1);
+      renderAll();
+    });
+
+    summaryQtyInput.addEventListener('input', () => {
+      if (state.mode !== 'single') {
+        summaryQtyInput.value = totalQuantity();
+        return;
+      }
+      const value = Math.max(1, Number(summaryQtyInput.value) || 1);
+      state.zones[0].quantity = value;
+      summaryQtyInput.value = value;
+      syncSummaries();
+      renderConfigRows();
+      renderConfirmRows();
+      renderDetailRows();
+    });
+
+    tabs.forEach((tab) => {
+      tab.addEventListener('click', () => showPage(tab.dataset.target));
+    });
+
+    nextStepBtn.addEventListener('click', () => showPage('confirm'));
+    backToCreateBtn.addEventListener('click', () => showPage('create'));
+    confirmPrevBtn.addEventListener('click', () => showPage('create'));
+    submitApplicationBtn.addEventListener('click', () => showPage('detail'));
+    detailBackBtn.addEventListener('click', () => showPage('confirm'));
+
+    document.addEventListener('click', (event) => {
+      if (!event.target.closest('.select-wrap')) {
+        imageVersionPanel.classList.add('hidden');
+        projectPanel.classList.add('hidden');
+      }
+    });
+
+    renderAll();
+  </script>
+</body>
+</html>
