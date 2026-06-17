@@ -884,8 +884,8 @@
               <div class="label required">创建方式：</div>
               <div class="row-main">
                 <div class="pill-group">
-                  <div class="pill active" data-mode-btn="single">单可用区创建</div>
-                  <div class="pill" data-mode-btn="multi">多可用区创建</div>
+                  <div class="pill active" data-mode-btn="single">单可用区</div>
+                  <div class="pill" data-mode-btn="multi">多可用区</div>
                 </div>
               </div>
             </div>
@@ -1228,7 +1228,7 @@
                 <td class="key">放置群组</td>
                 <td>---</td>
                 <td class="key">创建方式</td>
-                <td id="confirm-mode">单可用区创建</td>
+                <td id="confirm-mode">单可用区</td>
               </tr>
             </table>
           </div>
@@ -1288,7 +1288,7 @@
             <table class="desc-list">
               <tr>
                 <td class="key">创建方式</td>
-                <td id="detail-mode">单可用区创建</td>
+                <td id="detail-mode">单可用区</td>
                 <td class="key">总实例数</td>
                 <td id="detail-total">1</td>
               </tr>
@@ -1581,12 +1581,12 @@
 
     function syncSummaries() {
       const total = totalQuantity();
-      const modeText = state.mode === 'multi' ? '多可用区创建' : '单可用区创建';
+      const modeText = state.mode === 'multi' ? '多可用区' : '单可用区';
       const dist = distributionText(false);
       const detailDist = distributionText(true);
       summaryQtyInput.value = total;
       summaryQtyTip.innerHTML = state.room !== '媒体机房' && state.mode === 'single' && total > 1 && availableZones().length > 1
-        ? '<span style="color:#595959;">如需高可用部署，建议切换为</span><a class="link" id="switch-multi-link" style="color:#1677ff;">多可用区创建</a>'
+        ? '<span style="color:#595959;">如需高可用部署，建议切换为</span><a class="link" id="switch-multi-link" style="color:#1677ff;">多可用区</a>'
         : state.mode === 'multi'
           ? '请在上方可用区中调整实例数量'
           : '';
