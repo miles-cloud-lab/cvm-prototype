@@ -1188,11 +1188,11 @@
 
         <div class="section">
           <div style="display:flex;justify-content:space-between;align-items:center;">
-            <h3 class="section-title" style="margin-bottom:0;">基础配置</h3>
+            <h3 class="section-title" style="margin-bottom:0;">实例信息</h3>
           </div>
 
           <div class="sub-block" style="margin-top:18px;">
-            <div style="margin-bottom:12px;"><strong>实例公共配置</strong></div>
+            <div style="margin-bottom:12px;"><strong>基础配置</strong></div>
             <table class="desc-list">
               <tr>
                 <td class="key">总实例数</td>
@@ -1203,32 +1203,38 @@
               <tr>
                 <td class="key">所属项目</td>
                 <td>sohu-bd-sclb-pro</td>
-                <td class="key">镜像</td>
-                <td>Red_Hat_Enterprise_Linux_8.7_x64_DomeOS</td>
-              </tr>
-              <tr>
                 <td class="key">实例</td>
                 <td>g6.large8　4核　8GB</td>
+              </tr>
+              <tr>
+                <td class="key">镜像</td>
+                <td>Red_Hat_Enterprise_Linux_8.7_x64_DomeOS</td>
                 <td class="key">系统盘</td>
                 <td>1 * 50GiB | 增强型 SSD 型云硬盘</td>
               </tr>
               <tr>
                 <td class="key">数据盘</td>
                 <td>1 * 70GiB | HDD 型云硬盘</td>
-                <td class="key">网络 / 带宽</td>
-                <td>系统分配 / 500Mbps</td>
+                <td class="key">网络</td>
+                <td>系统分配</td>
               </tr>
               <tr>
+                <td class="key">带宽</td>
+                <td>500Mbps</td>
                 <td class="key">实例名称</td>
                 <td>sclb-4layer-pro-jsy</td>
-                <td class="key">登录方式</td>
-                <td>自动生成密码</td>
               </tr>
               <tr>
-                <td class="key">放置群组</td>
+                <td class="key">登录方式</td>
+                <td>自动生成密码</td>
+                <td class="key">置放群组</td>
                 <td>---</td>
+              </tr>
+              <tr>
                 <td class="key">创建方式</td>
                 <td id="confirm-mode">单可用区</td>
+                <td class="key"></td>
+                <td></td>
               </tr>
             </table>
           </div>
@@ -1283,28 +1289,18 @@
 
         <div class="section">
           <h3 class="section-title">实例信息</h3>
-          <div class="sub-block" style="margin-top:0;">
-            <div style="margin-bottom:12px;"><strong>申请摘要</strong></div>
+          <div class="sub-block">
+            <div style="margin-bottom:12px;"><strong>基础配置</strong></div>
             <table class="desc-list">
+              <tr>
+                <td class="key">总实例数</td>
+                <td id="detail-total">1</td>
+                <td class="key">实例类型</td>
+                <td>搜狐云</td>
+              </tr>
               <tr>
                 <td class="key">创建方式</td>
                 <td id="detail-mode">单可用区</td>
-                <td class="key">总实例数</td>
-                <td id="detail-total">1</td>
-              </tr>
-              <tr>
-                <td class="key">分布摘要</td>
-                <td colspan="3" id="detail-distribution">金山云 B区 1 台</td>
-              </tr>
-            </table>
-          </div>
-
-          <div class="sub-block">
-            <div style="margin-bottom:12px;"><strong>实例公共配置</strong></div>
-            <table class="desc-list">
-              <tr>
-                <td class="key">实例类型</td>
-                <td>搜狐云</td>
                 <td class="key">所属项目</td>
                 <td>sohu-bd-sclb-pro</td>
               </tr>
@@ -1335,20 +1331,20 @@
               <tr>
                 <td class="key">实例描述</td>
                 <td>sclb 生产环境金山云集群 master 节点</td>
-                <td class="key">放置群组</td>
+                <td class="key">置放群组</td>
                 <td>---</td>
               </tr>
             </table>
           </div>
 
           <div class="sub-block">
-            <div style="margin-bottom:12px;"><strong>可用区分布明细</strong></div>
+            <div style="margin-bottom:12px;"><strong>可用区分布</strong></div>
             <table class="table-compact">
               <thead>
                 <tr>
                   <th style="width:180px;">机房</th>
                   <th style="width:180px;">可用区</th>
-                  <th style="width:180px;">申请数量</th>
+                  <th style="width:180px;">实例数量</th>
                 </tr>
               </thead>
               <tbody id="detail-az-body"></tbody>
@@ -1411,7 +1407,6 @@
     const confirmSummaryDistribution = document.getElementById('confirm-summary-distribution');
     const detailMode = document.getElementById('detail-mode');
     const detailTotal = document.getElementById('detail-total');
-    const detailDistribution = document.getElementById('detail-distribution');
     const detailAzBody = document.getElementById('detail-az-body');
 
     const state = {
@@ -1455,6 +1450,12 @@
     function showPage(target) {
       tabs.forEach((tab) => tab.classList.toggle('active', tab.dataset.target === target));
       pages.forEach((page) => page.classList.toggle('active', page.id === target));
+      if (target === 'confirm' || target === 'detail') {
+        normalizeZonesForMode();
+        renderConfirmRows();
+        renderDetailRows();
+        syncSummaries();
+      }
     }
 
     function availableZones() {
@@ -1559,31 +1560,41 @@
       });
     }
 
-    function renderConfirmRows() {
-      confirmAzBody.innerHTML = state.zones.map((item) => `
-        <tr>
+    function getDisplayZones() {
+      if (state.zones.length > 0) {
+        return state.zones;
+      }
+      return [{
+        zone: defaultZoneForRoom(state.room),
+        quantity: Math.max(1, Number(summaryQtyInput.value) || 1)
+      }];
+    }
+
+    function fillAzRows(tbody) {
+      tbody.innerHTML = '';
+      getDisplayZones().forEach((item) => {
+        const row = document.createElement('tr');
+        row.innerHTML = `
           <td>${state.room}</td>
           <td>${item.zone}</td>
           <td>${item.quantity}</td>
-        </tr>
-      `).join('');
+        `;
+        tbody.appendChild(row);
+      });
+    }
+
+    function renderConfirmRows() {
+      fillAzRows(confirmAzBody);
     }
 
     function renderDetailRows() {
-      detailAzBody.innerHTML = state.zones.map((item, index) => `
-        <tr>
-          <td>${state.room}</td>
-          <td>${item.zone}</td>
-          <td>${item.quantity}</td>
-        </tr>
-      `).join('');
+      fillAzRows(detailAzBody);
     }
 
     function syncSummaries() {
       const total = totalQuantity();
       const modeText = state.mode === 'multi' ? '多可用区' : '单可用区';
       const dist = distributionText(false);
-      const detailDist = distributionText(true);
       summaryQtyInput.value = total;
       summaryQtyTip.innerHTML = state.room !== '媒体机房' && state.mode === 'single' && total > 1 && availableZones().length > 1
         ? '<span style="color:#595959;">如需高可用部署，建议切换为</span><a class="link" id="switch-multi-link" style="color:#1677ff;">多可用区</a>'
@@ -1599,7 +1610,6 @@
 
       detailMode.textContent = modeText;
       detailTotal.textContent = total;
-      detailDistribution.textContent = detailDist;
     }
 
     function renderAll() {
