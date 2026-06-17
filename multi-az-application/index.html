@@ -619,9 +619,17 @@
       background: rgba(255,255,255,.98);
       border-top: 1px solid #e8e8e8;
       display: flex;
+      flex-direction: column;
+      align-items: stretch;
+      gap: 8px;
+      padding: 14px 20px;
+    }
+
+    .summary-main {
+      display: flex;
       align-items: center;
       justify-content: space-between;
-      padding: 14px 20px;
+      gap: 16px;
     }
 
     .summary-meta {
@@ -637,6 +645,13 @@
       display: inline-flex;
       align-items: center;
       gap: 8px;
+    }
+
+    .summary-qty-block {
+      display: inline-flex;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 4px;
     }
 
     .summary-qty input {
@@ -857,15 +872,15 @@
             <div class="form-row">
               <div class="label required">机房：</div>
               <div class="row-main">
-                <div class="pill-group">
-                  <div class="pill active disabled">金山云</div>
-                  <div class="pill disabled">亦庄</div>
-                  <div class="pill disabled">媒体机房</div>
+                <div class="pill-group" id="room-wrap">
+                  <div class="pill active" data-room-option="金山云">金山云</div>
+                  <div class="pill" data-room-option="亦庄">亦庄</div>
+                  <div class="pill" data-room-option="媒体机房">媒体机房</div>
                 </div>
               </div>
             </div>
 
-            <div class="form-row">
+            <div class="form-row" id="mode-row">
               <div class="label required">创建方式：</div>
               <div class="row-main">
                 <div class="pill-group">
@@ -878,12 +893,12 @@
             <div class="form-row">
               <div class="label required">可用区：</div>
               <div class="row-main">
-                <div class="pill-group hidden" id="single-zone-wrap">
+                <div class="pill-group" id="single-zone-wrap">
                   <div class="pill" data-single-zone-option="A区">A区</div>
-                  <div class="pill" data-single-zone-option="B区">B区</div>
+                  <div class="pill active" data-single-zone-option="B区">B区</div>
                 </div>
-                <div class="small-note hidden" id="single-zone-note" style="margin-top:10px;">只针对系统盘做可用区划分，数据盘不做划分。</div>
-                <div class="sub-block" id="multi-az-block" style="margin-top:0;max-width:760px;padding:12px 16px;background:#fff;border-color:#f0f0f0;">
+                <div class="small-note" id="single-zone-note" style="margin-top:10px;">只针对系统盘做可用区划分，数据盘不做划分。</div>
+                <div class="sub-block hidden" id="multi-az-block" style="margin-top:0;max-width:760px;padding:12px 16px;background:#fff;border-color:#f0f0f0;">
                   <table class="table-compact">
                     <thead>
                       <tr>
@@ -893,7 +908,7 @@
                     </thead>
                     <tbody id="az-config-body"></tbody>
                   </table>
-                  <div style="margin-top:10px;">
+                  <div class="hidden" style="margin-top:10px;">
                     <a class="link" id="add-az-link">+ 添加可用区</a>
                   </div>
                   <div class="small-note" style="margin-top:10px;">只针对系统盘做可用区划分，数据盘不做划分。</div>
@@ -1114,19 +1129,21 @@
         </div>
 
         <div class="summary-bar">
-          <div class="summary-meta">
-            <span>已选：<strong>搜狐云 - g6.large8 - 4核 8GB</strong></span>
-            <span>创建方式：<strong id="summary-mode">单可用区创建</strong></span>
-            <span class="summary-qty" id="summary-qty-wrap">
-              数量：
-              <input id="summary-qty-input" type="number" min="1" value="1" />
-              <span class="small-note" id="summary-qty-tip">可直接编辑</span>
-            </span>
-            <span>分布：<strong id="summary-distribution">B区 1台</strong></span>
-          </div>
-          <div class="btns">
-            <button class="btn primary" id="next-step-btn">下一步</button>
-            <button class="btn">取消</button>
+          <div class="summary-main">
+            <div class="summary-meta">
+              <span>已选：<strong>搜狐云 - g6.large8 - 4核 8GB</strong></span>
+              <span class="summary-qty-block">
+                <span class="summary-qty" id="summary-qty-wrap">
+                  数量：
+                  <input id="summary-qty-input" type="number" min="1" value="1" />
+                  <span class="small-note" id="summary-qty-tip"></span>
+                </span>
+              </span>
+            </div>
+            <div class="btns">
+              <button class="btn primary" id="next-step-btn">下一步</button>
+              <button class="btn">取消</button>
+            </div>
           </div>
         </div>
       </section>
@@ -1377,15 +1394,15 @@
     const projectSelect = document.getElementById('project-select');
     const projectPanel = document.getElementById('project-panel');
     const projectOptions = document.getElementById('project-options');
+    const roomWrap = document.getElementById('room-wrap');
+    const modeRow = document.getElementById('mode-row');
     const singleZoneWrap = document.getElementById('single-zone-wrap');
     const singleZoneNote = document.getElementById('single-zone-note');
     const multiAzBlock = document.getElementById('multi-az-block');
 
-    const summaryMode = document.getElementById('summary-mode');
     const summaryQtyWrap = document.getElementById('summary-qty-wrap');
     const summaryQtyInput = document.getElementById('summary-qty-input');
     const summaryQtyTip = document.getElementById('summary-qty-tip');
-    const summaryDistribution = document.getElementById('summary-distribution');
     const confirmTotal = document.getElementById('confirm-total');
     const confirmMode = document.getElementById('confirm-mode');
     const confirmAzBody = document.getElementById('confirm-az-body');
@@ -1398,6 +1415,7 @@
     const detailAzBody = document.getElementById('detail-az-body');
 
     const state = {
+      room: '金山云',
       mode: 'single',
       imageMode: 'public',
       selectedImage: 'redhat',
@@ -1409,21 +1427,39 @@
       ]
     };
 
+    function defaultZoneForRoom(room) {
+      return room === '媒体机房' ? 'A区' : 'B区';
+    }
+
+    function normalizeZonesForMode() {
+      if (state.mode === 'single') {
+        const singleZone = state.zones[0] || { zone: defaultZoneForRoom(state.room), quantity: 1 };
+        const validZones = availableZones();
+        state.zones = [{
+          zone: validZones.includes(singleZone.zone) ? singleZone.zone : defaultZoneForRoom(state.room),
+          quantity: Math.max(1, Number(singleZone.quantity) || 1)
+        }];
+        return;
+      }
+
+      const zoneMap = new Map();
+      state.zones.forEach((item) => {
+        zoneMap.set(item.zone, Math.max(1, Number(item.quantity) || 1));
+      });
+      state.zones = availableZones().map((zone) => ({
+        zone,
+        quantity: zoneMap.get(zone) || 1
+      }));
+    }
+
     function showPage(target) {
       tabs.forEach((tab) => tab.classList.toggle('active', tab.dataset.target === target));
       pages.forEach((page) => page.classList.toggle('active', page.id === target));
     }
 
     function availableZones() {
+      if (state.room === '媒体机房') return ['A区'];
       return ['A区', 'B区'];
-    }
-
-    function usedZones() {
-      return state.zones.map((item) => item.zone);
-    }
-
-    function nextUnusedZone() {
-      return availableZones().find((zone) => !usedZones().includes(zone));
     }
 
     function zoneOptionMarkup(selectedZone) {
@@ -1433,7 +1469,7 @@
     }
 
     function distributionText(withRoom) {
-      const prefix = withRoom ? '金山云 ' : '';
+      const prefix = withRoom ? `${state.room} ` : '';
       return state.zones.map((item) => `${prefix}${item.zone} ${item.quantity}台`).join('，');
     }
 
@@ -1441,15 +1477,21 @@
       return state.zones.reduce((sum, item) => sum + item.quantity, 0);
     }
 
+    function syncRoomButtons() {
+      roomWrap.querySelectorAll('[data-room-option]').forEach((option) => {
+        option.classList.toggle('active', option.dataset.roomOption === state.room);
+      });
+      modeRow.classList.toggle('hidden', state.room === '媒体机房');
+    }
+
     function syncModeButtons() {
       modeButtons.forEach((button) => {
         button.classList.toggle('active', button.dataset.modeBtn === state.mode);
       });
       const multi = state.mode === 'multi';
-      addAzLink.classList.toggle('hidden', !multi || state.zones.length >= availableZones().length);
       summaryQtyWrap.classList.toggle('readonly', multi);
       summaryQtyInput.readOnly = multi;
-      summaryQtyTip.textContent = multi ? '由可用区分布自动汇总' : '可直接编辑';
+      summaryQtyTip.textContent = multi ? '请在上方可用区中调整实例数量' : '';
     }
 
     function syncImageControls() {
@@ -1492,6 +1534,9 @@
       singleZoneWrap.classList.toggle('hidden', !single);
       singleZoneNote.classList.toggle('hidden', !single);
       multiAzBlock.classList.toggle('hidden', single);
+      singleZoneWrap.querySelectorAll('[data-single-zone-option]').forEach((option) => {
+        option.classList.toggle('hidden', !availableZones().includes(option.dataset.singleZoneOption));
+      });
       if (single) {
         const selectedZone = state.zones[0] ? state.zones[0].zone : 'A区';
         singleZoneWrap.querySelectorAll('[data-single-zone-option]').forEach((option) => {
@@ -1517,7 +1562,7 @@
     function renderConfirmRows() {
       confirmAzBody.innerHTML = state.zones.map((item) => `
         <tr>
-          <td>金山云</td>
+          <td>${state.room}</td>
           <td>${item.zone}</td>
           <td>${item.quantity}</td>
         </tr>
@@ -1527,7 +1572,7 @@
     function renderDetailRows() {
       detailAzBody.innerHTML = state.zones.map((item, index) => `
         <tr>
-          <td>金山云</td>
+          <td>${state.room}</td>
           <td>${item.zone}</td>
           <td>${item.quantity}</td>
         </tr>
@@ -1539,10 +1584,12 @@
       const modeText = state.mode === 'multi' ? '多可用区创建' : '单可用区创建';
       const dist = distributionText(false);
       const detailDist = distributionText(true);
-
-      summaryMode.textContent = modeText;
       summaryQtyInput.value = total;
-      summaryDistribution.textContent = dist;
+      summaryQtyTip.innerHTML = state.room !== '媒体机房' && state.mode === 'single' && total > 1 && availableZones().length > 1
+        ? '<span style="color:#595959;">如需高可用部署，建议切换为</span><a class="link" id="switch-multi-link" style="color:#1677ff;">多可用区创建</a>'
+        : state.mode === 'multi'
+          ? '请在上方可用区中调整实例数量'
+          : '';
 
       confirmTotal.textContent = total;
       confirmMode.textContent = modeText;
@@ -1556,6 +1603,8 @@
     }
 
     function renderAll() {
+      normalizeZonesForMode();
+      syncRoomButtons();
       syncModeButtons();
       syncImageControls();
       syncProjectControls();
@@ -1570,19 +1619,36 @@
       button.addEventListener('click', () => {
         const mode = button.dataset.modeBtn;
         if (mode === state.mode) return;
-        const preservedZone = state.zones[0] ? state.zones[0].zone : 'B区';
         state.mode = mode;
         if (mode === 'single') {
-          state.zones = [state.zones[0] || { zone: 'B区', quantity: 1 }];
-          state.zones[0].zone = 'B区';
-        } else if (state.zones.length < 2) {
-          state.zones = [
-            { zone: 'A区', quantity: 1 },
-            { zone: 'B区', quantity: state.zones[0] ? state.zones[0].quantity : 1 }
-          ];
+          state.zones = [state.zones[0] || { zone: defaultZoneForRoom(state.room), quantity: 1 }];
+          if (!availableZones().includes(state.zones[0].zone)) {
+            state.zones[0].zone = defaultZoneForRoom(state.room);
+          }
+        } else {
+          normalizeZonesForMode();
         }
         renderAll();
       });
+    });
+
+    roomWrap.addEventListener('click', (event) => {
+      const option = event.target.closest('[data-room-option]');
+      if (!option) return;
+      const nextRoom = option.dataset.roomOption;
+      if (nextRoom === state.room) return;
+      state.room = nextRoom;
+      if (nextRoom === '媒体机房') {
+        state.mode = 'single';
+      }
+      if (state.mode === 'single') {
+        state.zones = [{
+          zone: defaultZoneForRoom(nextRoom),
+          quantity: Math.max(1, Number(state.zones[0]?.quantity) || 1)
+        }];
+      }
+      normalizeZonesForMode();
+      renderAll();
     });
 
     imageModeTabs.forEach((tab) => {
@@ -1645,13 +1711,6 @@
       renderDetailRows();
     });
 
-    addAzLink.addEventListener('click', () => {
-      const nextZone = nextUnusedZone();
-      if (!nextZone) return;
-      state.zones.push({ zone: nextZone, quantity: 1 });
-      renderAll();
-    });
-
     azConfigBody.addEventListener('input', (event) => {
       const input = event.target;
       if (!input.matches('[data-qty-index]')) return;
@@ -1683,7 +1742,7 @@
       renderAll();
     });
 
-    summaryQtyInput.addEventListener('input', () => {
+    function syncSingleModeQuantity() {
       if (state.mode !== 'single') {
         summaryQtyInput.value = totalQuantity();
         return;
@@ -1695,7 +1754,10 @@
       renderConfigRows();
       renderConfirmRows();
       renderDetailRows();
-    });
+    }
+
+    summaryQtyInput.addEventListener('input', syncSingleModeQuantity);
+    summaryQtyInput.addEventListener('change', syncSingleModeQuantity);
 
     tabs.forEach((tab) => {
       tab.addEventListener('click', () => showPage(tab.dataset.target));
@@ -1708,6 +1770,15 @@
     detailBackBtn.addEventListener('click', () => showPage('confirm'));
 
     document.addEventListener('click', (event) => {
+      if (event.target.id === 'switch-multi-link') {
+        event.preventDefault();
+        if (state.room !== '媒体机房' && state.mode !== 'multi') {
+          state.mode = 'multi';
+          normalizeZonesForMode();
+          renderAll();
+        }
+        return;
+      }
       if (!event.target.closest('.select-wrap')) {
         imageVersionPanel.classList.add('hidden');
         projectPanel.classList.add('hidden');
